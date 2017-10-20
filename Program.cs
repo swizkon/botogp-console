@@ -3,50 +3,83 @@ using Microsoft.AspNetCore.SignalR.Client;
 
 using System.Threading.Tasks;
 
-namespace botogp_console
+namespace BotoGP.ConsoleClient
 {
+
     class Program
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            var name = ReadInput("Enter racer name:");
+            Console.WriteLine($"Hello {name}!");
+
+            var tour = ReadInput("Enter tour name:");
+            Console.WriteLine($"Hello {name}!");
 
 
-            var t = Test().Result;
+            IRaceBot bot = new ConsoleBot();
+            var t = Test(bot, name, tour).Result;
 
 
             Console.ReadKey();
         }
 
-        static async Task<string> Test()
+        static async Task<string> Test(IRaceBot raceBot, string name, string tour)
         {
             var connection = new HubConnectionBuilder()
-                            .WithUrl("http://localhost:5001/race")
+                            .WithUrl("http://localhost:5002/race")
                             .WithConsoleLogger()
                             .Build();
 
             connection.On<string>("Send", data =>
             {
-                Console.WriteLine($"Send: {data}");
+                Console.WriteLine($"Received message Send: {data}");
             });
 
-            /*
-            connection.On<object>("Move", obj =>
+            connection.On<string, int, int>("Move", (racer, x, y) =>
             {
-                Console.WriteLine($"Move: {obj}");
+                raceBot.RacerMove(racer, x, y);
+            });
+            
+            /*
+            connection.On<string, int, int>("Move", (a, b, c) =>
+            {
+                Console.WriteLine($"Received message Move: {a} {b} {c}");
             });
             */
-            
-            connection.On<string, int, int>("Move", (a, b, c)  =>
-            {
-                Console.WriteLine($"Move: {a} {b} {c}");
-            });
 
             await connection.StartAsync();
 
-            await connection.InvokeAsync("Send", "Hello");
+            await connection.InvokeAsync("Send", $"Hello! {name} joined the tour");
+
+            var message = "";
+
+            do
+            {
+                message = ReadInput("Write messages: (q to exit)");
+
+                // if(message != "q")
+                await connection.InvokeAsync("Send", message);
+            } while (message != "q");
+
+
 
             return "";
+        }
+
+
+        static string ReadInput(string label)
+        {
+            var result = "";
+
+            do
+            {
+                Console.WriteLine(label);
+                result = Console.ReadLine();
+            }
+            while (string.IsNullOrEmpty(result));
+
+            return result;
         }
     }
 }
