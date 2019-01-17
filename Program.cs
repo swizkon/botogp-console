@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 
 using System.Threading.Tasks;
 using BotoGP.Domain;
+using System.Linq;
 
 namespace BotoGP.ConsoleClient
 {
@@ -13,11 +14,11 @@ namespace BotoGP.ConsoleClient
         {
             Console.ForegroundColor = Console.BackgroundColor;
 
-            var name = ReadInput("Enter racer name:");
-            Console.WriteLine($"Hello {name}!");
+            var name = ReadInput("Enter racer name:", "racer", args);
+            Console.WriteLine($"Hello {name}");
 
-            var tour = ReadInput("Enter tour name:");
-            Console.WriteLine($"Hello {name}!");
+            var tour = ReadInput("Enter tour name:", "tour", args);
+            Console.WriteLine($"Welcome to {tour}");
 
             IRaceBot bot = new ConsoleBot();
             var t = Test(bot, name, tour).Result;
@@ -28,8 +29,7 @@ namespace BotoGP.ConsoleClient
         static async Task<string> Test(IRaceBot raceBot, string name, string tour)
         {
             var connection = new HubConnectionBuilder()
-                            .WithUrl("http://localhost:5002/race")
-                            .WithConsoleLogger()
+                            .WithUrl("http://localhost:5001/race")
                             .Build();
 
             connection.On<string>("Send", data =>
@@ -40,7 +40,7 @@ namespace BotoGP.ConsoleClient
             connection.On<string, int, int>("Move", (racer, x, y) =>
             {
                 Console.WriteLine($"Received message Move: {racer}");
-                // raceBot.RacerMove(racer, x, y);
+                // raceBot.RacerMove(racer, x, y);  
             });
 
             connection.On<string, int, int, int, int>("RaceStateChange", (racer, x, y, verticalVelocity, horizontalVelocity) =>
@@ -57,7 +57,6 @@ namespace BotoGP.ConsoleClient
             
             await connection.InvokeAsync("JoinTour", name, tour);
 
-
             /*
             var message = 0;
 
@@ -66,13 +65,19 @@ namespace BotoGP.ConsoleClient
                 message = raceBot.NextMove(name, null);
                 // if(message != "q")
                 await connection.InvokeAsync("NextMove", name, message);
-            } while (message != 0);
+            } while (message != 0); 
             */
             return "";
         }
 
-        static string ReadInput(string label)
+        static string ReadInput(string label, string argName = null, string[] argValues = null)
         {
+            var argKey = $"--{argName}=";
+            if(argValues != null && argValues.Any(a => a.StartsWith(argKey)))
+            {
+                return argValues.First(a => a.StartsWith(argKey)).Replace(argKey, "");
+            }
+
             var result = "";
 
             do
